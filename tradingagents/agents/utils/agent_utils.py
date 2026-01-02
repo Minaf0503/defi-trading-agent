@@ -1,5 +1,5 @@
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
-from typing import List
+from typing import List, Optional
 from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import RemoveMessage
@@ -8,11 +8,20 @@ from datetime import date, timedelta, datetime
 import functools
 import pandas as pd
 import os
+import json
 from dateutil.relativedelta import relativedelta
 from langchain_openai import ChatOpenAI
 from tradingagents.dataflows.crypto_utils import CryptoDataProvider, OnchainAnalytics
+from tradingagents.dataflows.rss_utils import (
+    fetch_dlnews_rss,
+    fetch_article_content,
+    filter_articles_by_asset,
+    filter_articles_by_date
+)
 from tradingagents.default_config import DEFAULT_CONFIG
 from langchain_core.messages import HumanMessage
+from tradingagents.agents.utils.context_manager import AgentContextManager
+from tradingagents.agents.utils.tool_registry import ToolRegistry
 
 
 def create_msg_delete():
@@ -47,6 +56,11 @@ class Toolkit:
     def __init__(self, config=None):
         if config:
             self.update_config(config)
+        
+        # Initialize context manager and tool registry
+        context_dir = config.get("agent_context_dir", "agent-context") if config else "agent-context"
+        self.context_manager = AgentContextManager(base_dir=context_dir, config=config)
+        self.tool_registry = ToolRegistry(context_manager=self.context_manager)
 
     # DeFi/Crypto-specific tools
     @staticmethod
@@ -328,4 +342,188 @@ class Toolkit:
             return f"Error getting risk data for {protocol}: {protocol_data['error']}"
         
         return f"Risk analysis for {protocol}: {json.dumps(protocol_data, indent=2)}"
+
+    @staticmethod
+    @tool
+    def get_dlnews_rss_feed(
+        token_symbol: Annotated[str, "Token symbol (e.g., BTC, ETH, UNI)"],
+        token_name: Annotated[Optional[str], "Optional token name (e.g., Bitcoin, Ethereum)"] = None,
+        days_back: Annotated[int, "Number of days to look back for articles"] = 7,
+    ):
+        """
+        Fetch and filter articles from DL News RSS feed for a specific token.
+        DL News is a credible DeFi news source: https://www.dlnews.com/rss/
+        
+        Args:
+            token_symbol (str): Token symbol to filter for
+            token_name (str): Optional token name to filter for
+            days_back (int): Number of days to look back
+        
+        Returns:
+            str: JSON string of filtered articles with titles, links, summaries, and dates
+        """
+        try:
+            articles = fetch_dlnews_rss(
+                asset_symbol=token_symbol,
+                asset_name=token_name,
+                days_back=days_back
+            )
+            
+            if not articles:
+                return f"No articles found for {token_symbol} in DL News RSS feed (last {days_back} days)"
+            
+            # Format articles for output
+            formatted_articles = []
+            for article in articles:
+                formatted_articles.append({
+                    "title": article.get("title", ""),
+                    "link": article.get("link", ""),
+                    "summary": article.get("summary", "")[:500],  # Limit summary length
+                    "published": article.get("published", ""),
+                    "tags": article.get("tags", [])
+                })
+            
+            return f"Found {len(formatted_articles)} articles for {token_symbol} from DL News:\n{json.dumps(formatted_articles, indent=2)}"
+        
+        except Exception as e:
+            return f"Error fetching DL News RSS feed for {token_symbol}: {str(e)}"
+
+    @staticmethod
+    @tool
+    def analyze_article_sentiment(
+        article_url: Annotated[str, "URL of the article to analyze"],
+        token_symbol: Annotated[str, "Token symbol being analyzed"],
+    ):
+        """
+        Fetch and analyze the sentiment of a news article for a specific token.
+        
+        Args:
+            article_url (str): URL of the article
+            token_symbol (str): Token symbol being analyzed
+        
+        Returns:
+            str: Analysis of article sentiment and key points
+        """
+        try:
+            # Fetch article content
+            content = fetch_article_content(article_url)
+            
+            if not content:
+                return f"Could not fetch article content from {article_url}"
+            
+            # Limit content length for analysis
+            content_preview = content[:3000] if len(content) > 3000 else content
+            
+            # Return structured information for LLM analysis
+            return f"""Article URL: {article_url}
+Token: {token_symbol}
+
+Article Content (preview):
+{content_preview}
+
+Please analyze this article for:
+1. Overall sentiment (bullish/bearish/neutral) regarding {token_symbol}
+2. Key points and themes
+3. Potential impact on {token_symbol}
+4. Risk factors mentioned
+5. Recommendations or predictions mentioned
+"""
+        
+        except Exception as e:
+            return f"Error analyzing article from {article_url}: {str(e)}"
+
+    @staticmethod
+    @tool
+    def get_crypto_news_sentiment(
+        token_symbol: Annotated[str, "Token symbol (e.g., BTC, ETH, UNI)"],
+        token_name: Annotated[Optional[str], "Optional token name"] = None,
+        days_back: Annotated[int, "Number of days to look back"] = 7,
+    ):
+        """
+        Get comprehensive news sentiment analysis for a token from DL News RSS feed.
+        Fetches articles, filters for the token, and provides sentiment summary.
+        
+        Args:
+            token_symbol (str): Token symbol
+            token_name (str): Optional token name
+            days_back (int): Number of days to look back
+        
+        Returns:
+            str: Comprehensive sentiment analysis based on news articles
+        """
+        try:
+            # Fetch articles
+            articles = fetch_dlnews_rss(
+                asset_symbol=token_symbol,
+                asset_name=token_name,
+                days_back=days_back
+            )
+            
+            if not articles:
+                return f"No news articles found for {token_symbol} in DL News (last {days_back} days). This may indicate low news coverage or neutral sentiment."
+            
+            # Format articles summary
+            articles_summary = []
+            for article in articles[:10]:  # Limit to top 10 articles
+                articles_summary.append({
+                    "title": article.get("title", ""),
+                    "link": article.get("link", ""),
+                    "summary": article.get("summary", "")[:300],
+                    "published": article.get("published", "")
+                })
+            
+            summary = f"""Found {len(articles)} articles for {token_symbol} from DL News (last {days_back} days):
+
+Articles Summary:
+{json.dumps(articles_summary, indent=2)}
+
+Please analyze these articles to provide:
+1. Overall sentiment trend (bullish/bearish/neutral)
+2. Key themes and narratives
+3. Positive and negative factors mentioned
+4. Potential impact on {token_symbol}
+5. Risk factors identified
+6. Trading recommendation based on sentiment (BUY/HOLD/SELL)
+"""
+            
+            return summary
+        
+        except Exception as e:
+            return f"Error getting news sentiment for {token_symbol}: {str(e)}"
+    
+    def get_agent_tools(self, agent_name: str, base_tools: List = None) -> List:
+        """
+        Get all tools for a specific agent, including base tools, context tools, and API tools.
+        
+        Args:
+            agent_name: Name of the agent
+            base_tools: Optional list of base tools to include
+        
+        Returns:
+            List of all tools for the agent
+        """
+        # Get base tools from this toolkit
+        if base_tools is None:
+            base_tools = [
+                self.get_crypto_price_data,
+                self.get_crypto_technical_indicators,
+                self.get_crypto_market_metrics,
+                self.get_crypto_volume_analysis,
+                self.get_onchain_liquidity_data,
+                self.get_onchain_holder_data,
+                self.get_onchain_transaction_data,
+                self.get_onchain_supply_data,
+                self.get_defi_protocol_data,
+                self.get_defi_yield_data,
+                self.get_defi_tvl_data,
+                self.get_defi_governance_data,
+                self.get_defi_risk_data,
+            ]
+        
+        # Setup agent tools with context and API tools
+        return self.tool_registry.setup_agent_tools(
+            agent_name=agent_name,
+            context_manager=self.context_manager,
+            base_tools=base_tools
+        )
 

@@ -17,3 +17,5 @@ rich
 questionary
 langchain-anthropic
 langchain-google-genai
+feedparser
+beautifulsoup4

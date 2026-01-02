@@ -111,42 +111,48 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources."""
+        # Define base tools for each analyst type
+        technical_base_tools = [
+            self.toolkit.get_crypto_price_data,
+            self.toolkit.get_crypto_technical_indicators,
+            self.toolkit.get_crypto_market_metrics,
+            self.toolkit.get_crypto_volume_analysis,
+        ]
+        
+        onchain_base_tools = [
+            self.toolkit.get_onchain_liquidity_data,
+            self.toolkit.get_onchain_holder_data,
+            self.toolkit.get_onchain_transaction_data,
+            self.toolkit.get_onchain_supply_data,
+        ]
+        
+        tokenomics_base_tools = [
+            self.toolkit.get_onchain_supply_data,
+            self.toolkit.get_onchain_holder_data,
+            self.toolkit.get_crypto_market_metrics,
+        ]
+        
+        sentiment_base_tools = [
+            self.toolkit.get_dlnews_rss_feed,
+            self.toolkit.analyze_article_sentiment,
+            self.toolkit.get_crypto_news_sentiment,
+        ]
+        
+        # Get enhanced tools for each agent (includes context and API tools)
+        technical_tools = self.toolkit.get_agent_tools("technical", technical_base_tools)
+        onchain_tools = self.toolkit.get_agent_tools("onchain", onchain_base_tools)
+        tokenomics_tools = self.toolkit.get_agent_tools("tokenomics", tokenomics_base_tools)
+        sentiment_tools = self.toolkit.get_agent_tools("sentiment_news", sentiment_base_tools)
+        
         return {
             # Technical analyst tools
-            "technical": ToolNode(
-                [
-                    self.toolkit.get_crypto_price_data,
-                    self.toolkit.get_crypto_technical_indicators,
-                    self.toolkit.get_crypto_market_metrics,
-                    self.toolkit.get_crypto_volume_analysis,
-                ]
-            ),
+            "technical": ToolNode(technical_tools),
             # Onchain analyst tools
-            "onchain": ToolNode(
-                [
-                    self.toolkit.get_onchain_liquidity_data,
-                    self.toolkit.get_onchain_holder_data,
-                    self.toolkit.get_onchain_transaction_data,
-                    self.toolkit.get_onchain_supply_data,
-                ]
-            ),
+            "onchain": ToolNode(onchain_tools),
             # Tokenomics analyst tools
-            "tokenomics": ToolNode(
-                [
-                    self.toolkit.get_onchain_supply_data,
-                    self.toolkit.get_onchain_holder_data,
-                    self.toolkit.get_crypto_market_metrics,
-                    self.toolkit.get_tokenomics_data,  # We'll need to add this
-                ]
-            ),
+            "tokenomics": ToolNode(tokenomics_tools),
             # Sentiment/News analyst tools
-            "sentiment_news": ToolNode(
-                [
-                    self.toolkit.get_crypto_news,  # We'll need to add this
-                    self.toolkit.get_social_media_sentiment,  # We'll need to add this
-                    self.toolkit.get_news_sentiment,  # We'll need to add this
-                ]
-            ),
+            "sentiment_news": ToolNode(sentiment_tools),
         }
 
     def propagate(self, company_name, trade_date):

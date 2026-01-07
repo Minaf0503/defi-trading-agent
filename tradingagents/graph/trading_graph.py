@@ -136,6 +136,9 @@ class TradingAgentsGraph:
             self.toolkit.get_dlnews_rss_feed,
             self.toolkit.analyze_article_sentiment,
             self.toolkit.get_crypto_news_sentiment,
+            self.toolkit.search_internet,
+            self.toolkit.search_twitter,
+            self.toolkit.search_reddit,
         ]
         
         # Get enhanced tools for each agent (includes context and API tools)

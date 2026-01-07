@@ -1,0 +1,2 @@
+Please analyze the current market sentiment for [TOKEN_SYMBOL] by gathering information from RSS feeds, internet search, Twitter, and Reddit. Provide a comprehensive sentiment analysis and trading recommendation (BUY/HOLD/SELL) with confidence level and rationale.
+

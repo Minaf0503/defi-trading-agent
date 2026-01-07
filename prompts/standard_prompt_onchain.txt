@@ -1,0 +1,2 @@
+Please analyze the onchain data for [TOKEN_SYMBOL] (token address: [TOKEN_ADDRESS]) by examining liquidity pools, holder distribution, transaction patterns, and network activity. Provide a comprehensive onchain analysis and trading recommendation (BUY/HOLD/SELL) with confidence level and rationale based on onchain signals.
+

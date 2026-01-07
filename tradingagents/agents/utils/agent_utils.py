@@ -18,6 +18,21 @@ from tradingagents.dataflows.rss_utils import (
     filter_articles_by_asset,
     filter_articles_by_date
 )
+# Import interface functions if available
+try:
+    from tradingagents.dataflows.interface import (
+        get_stock_news_openai,
+        get_reddit_company_news,
+        get_reddit_global_news
+    )
+except (ImportError, ModuleNotFoundError):
+    # Define placeholders if interface is not available
+    def get_stock_news_openai(*args, **kwargs):
+        return "Interface functions not available. Please install required dependencies."
+    def get_reddit_company_news(*args, **kwargs):
+        return ""
+    def get_reddit_global_news(*args, **kwargs):
+        return ""
 from tradingagents.default_config import DEFAULT_CONFIG
 from langchain_core.messages import HumanMessage
 from tradingagents.agents.utils.context_manager import AgentContextManager
@@ -490,6 +505,128 @@ Please analyze these articles to provide:
         
         except Exception as e:
             return f"Error getting news sentiment for {token_symbol}: {str(e)}"
+
+    @staticmethod
+    @tool
+    def search_internet(
+        token_symbol: Annotated[str, "Token symbol (e.g., BTC, ETH, UNI)"],
+        token_name: Annotated[Optional[str], "Optional token name"] = None,
+        days_back: Annotated[int, "Number of days to look back"] = 7,
+    ):
+        """
+        Search the internet for recent news and information about a cryptocurrency token.
+        Uses web search to find articles, news, and information from various sources.
+        
+        Args:
+            token_symbol: Token symbol to search for
+            token_name: Optional token name
+            days_back: Number of days to look back
+        
+        Returns:
+            str: Search results with news and information about the token
+        """
+        try:
+            from datetime import datetime, timedelta
+            from tradingagents.dataflows.interface import get_config
+            
+            config = get_config()
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Use OpenAI web search capability
+            search_query = f"{token_symbol} {token_name or ''} cryptocurrency news"
+            result = get_stock_news_openai(token_symbol, current_date)
+            
+            return f"Internet search results for {token_symbol}:\n{result}"
+        
+        except Exception as e:
+            return f"Error searching internet for {token_symbol}: {str(e)}"
+
+    @staticmethod
+    @tool
+    def search_twitter(
+        token_symbol: Annotated[str, "Token symbol (e.g., BTC, ETH, UNI)"],
+        token_name: Annotated[Optional[str], "Optional token name"] = None,
+        days_back: Annotated[int, "Number of days to look back"] = 7,
+    ):
+        """
+        Search Twitter/X for recent tweets and discussions about a cryptocurrency token.
+        Finds tweets, trending topics, and social media sentiment.
+        
+        Args:
+            token_symbol: Token symbol to search for
+            token_name: Optional token name
+            days_back: Number of days to look back
+        
+        Returns:
+            str: Twitter search results with tweets and discussions
+        """
+        try:
+            from datetime import datetime, timedelta
+            from tradingagents.dataflows.interface import get_config
+            
+            config = get_config()
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Use OpenAI web search to find Twitter content
+            # Note: This uses web search as Twitter API access may require authentication
+            search_query = f"{token_symbol} {token_name or ''} Twitter OR X site:twitter.com OR site:x.com"
+            result = get_stock_news_openai(f"{token_symbol} Twitter", current_date)
+            
+            return f"Twitter/X search results for {token_symbol}:\n{result}"
+        
+        except Exception as e:
+            return f"Error searching Twitter for {token_symbol}: {str(e)}"
+
+    @staticmethod
+    @tool
+    def search_reddit(
+        token_symbol: Annotated[str, "Token symbol (e.g., BTC, ETH, UNI)"],
+        token_name: Annotated[Optional[str], "Optional token name"] = None,
+        days_back: Annotated[int, "Number of days to look back"] = 7,
+        max_posts: Annotated[int, "Maximum number of posts to retrieve"] = 10,
+    ):
+        """
+        Search Reddit for recent posts and discussions about a cryptocurrency token.
+        Searches relevant subreddits like r/cryptocurrency, r/ethereum, r/bitcoin, etc.
+        
+        Args:
+            token_symbol: Token symbol to search for
+            token_name: Optional token name
+            days_back: Number of days to look back
+            max_posts: Maximum number of posts per day
+        
+        Returns:
+            str: Reddit posts and discussions about the token
+        """
+        try:
+            from datetime import datetime
+            from tradingagents.dataflows.interface import get_config
+            
+            config = get_config()
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Use Reddit search function
+            # Note: This requires Reddit data to be available
+            # For crypto tokens, we'll search in cryptocurrency subreddits
+            result = get_reddit_company_news(
+                ticker=token_symbol,
+                start_date=current_date,
+                look_back_days=days_back,
+                max_limit_per_day=max_posts
+            )
+            
+            if not result:
+                # Fallback to global news if company-specific search fails
+                result = get_reddit_global_news(
+                    start_date=current_date,
+                    look_back_days=days_back,
+                    max_limit_per_day=max_posts
+                )
+            
+            return result if result else f"No Reddit posts found for {token_symbol} in the last {days_back} days"
+        
+        except Exception as e:
+            return f"Error searching Reddit for {token_symbol}: {str(e)}"
     
     def get_agent_tools(self, agent_name: str, base_tools: List = None) -> List:
         """

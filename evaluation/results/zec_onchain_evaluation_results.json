@@ -1,0 +1,165 @@
+{
+  "automated": {
+    "overall_score": 0.9341111111111112,
+    "component_avg_score": 0.9777777777777779,
+    "end_to_end_avg_score": 0.905,
+    "component_evals": [
+      {
+        "component_name": "liquidity_data_fetch",
+        "accuracy_score": 1.0,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      },
+      {
+        "component_name": "holder_data_fetch",
+        "accuracy_score": 1.0,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      },
+      {
+        "component_name": "transaction_data_fetch",
+        "accuracy_score": 1.0,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      },
+      {
+        "component_name": "supply_data_fetch",
+        "accuracy_score": 1.0,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      },
+      {
+        "component_name": "mempool_analysis",
+        "accuracy_score": 1.0,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      },
+      {
+        "component_name": "recommendation_generation",
+        "accuracy_score": 0.6666666666666666,
+        "api_error_rate": 0.0,
+        "policy_adherence": 1.0,
+        "success": true
+      }
+    ],
+    "patterns": {
+      "hallucination_count": 0,
+      "tone_mismatch_detected": false,
+      "user_confusion_indicators": [],
+      "missing_information": [],
+      "contradictory_statements": []
+    }
+  },
+  "rubric": {
+    "category_scores": {
+      "information_gathering": {
+        "score": 0.0,
+        "weight": 0.25
+      },
+      "sentiment_analysis": {
+        "score": 0.7,
+        "weight": 0.25
+      },
+      "recommendation": {
+        "score": 1.0,
+        "weight": 0.3
+      },
+      "presentation": {
+        "score": 0.63,
+        "weight": 0.2
+      }
+    },
+    "overall_score": 0.601,
+    "rubric": {
+      "information_gathering": {
+        "weight": 0.25,
+        "criteria": {
+          "rss_feed_used": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "internet_search_used": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "twitter_search_used": {
+            "weight": 0.2,
+            "max_score": 1.0
+          },
+          "reddit_search_used": {
+            "weight": 0.2,
+            "max_score": 1.0
+          }
+        }
+      },
+      "sentiment_analysis": {
+        "weight": 0.25,
+        "criteria": {
+          "sentiment_labeled": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "drivers_identified": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "fud_fomo_detected": {
+            "weight": 0.2,
+            "max_score": 1.0
+          },
+          "trends_analyzed": {
+            "weight": 0.2,
+            "max_score": 1.0
+          }
+        }
+      },
+      "recommendation": {
+        "weight": 0.3,
+        "criteria": {
+          "recommendation_present": {
+            "weight": 0.25,
+            "max_score": 1.0
+          },
+          "confidence_level": {
+            "weight": 0.25,
+            "max_score": 1.0
+          },
+          "rationale_provided": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "risk_factors": {
+            "weight": 0.2,
+            "max_score": 1.0
+          }
+        }
+      },
+      "presentation": {
+        "weight": 0.2,
+        "criteria": {
+          "structure": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "tone": {
+            "weight": 0.3,
+            "max_score": 1.0
+          },
+          "completeness": {
+            "weight": 0.2,
+            "max_score": 1.0
+          },
+          "clarity": {
+            "weight": 0.2,
+            "max_score": 1.0
+          }
+        }
+      }
+    }
+  }
+}

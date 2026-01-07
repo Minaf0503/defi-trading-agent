@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from evaluation.evaluation_framework import SentimentNewsAnalystEvaluator
 from evaluation.llm_judge import LLMJudge, RubricBasedEvaluator
+from evaluation.summary_updater import append_to_sentiment_summary
 
 
 def load_zec_example():
@@ -133,6 +134,15 @@ def main():
     json_file = output_dir / "zec_evaluation_results.json"
     json_file.write_text(json.dumps(json_results, indent=2))
     print(f"\nJSON results saved to: {json_file}")
+    
+    # Update summary file
+    try:
+        # Extract token from prompt
+        token = "ZEC" if "ZEC" in prompt or "Zcash" in prompt else "Unknown"
+        append_to_sentiment_summary(json_results, prompt, token)
+        print(f"Summary updated: {output_dir / 'sentiment_analyst_evaluation_summary.md'}")
+    except Exception as e:
+        print(f"Warning: Could not update summary file: {e}")
     
     # Summary
     print("\n" + "=" * 80)

@@ -286,6 +286,18 @@ EXPERIMENT_PATHS = {
 
 def get_experiment_config(token: str, architecture: str, period: str) -> Dict:
     """Get complete experiment configuration for a specific setup."""
+    if token not in EXPERIMENT_TOKENS:
+        valid = ", ".join(sorted(EXPERIMENT_TOKENS))
+        raise ValueError(f"Unknown token {token!r}; expected one of: {valid}")
+
+    if architecture not in AGENT_ARCHITECTURES:
+        valid = ", ".join(sorted(AGENT_ARCHITECTURES))
+        raise ValueError(f"Unknown architecture {architecture!r}; expected one of: {valid}")
+
+    if period not in TIME_PERIODS:
+        valid = ", ".join(sorted(TIME_PERIODS))
+        raise ValueError(f"Unknown period {period!r}; expected one of: {valid}")
+
     return {
         "token": EXPERIMENT_TOKENS[token],
         "architecture": AGENT_ARCHITECTURES[architecture],

@@ -11,7 +11,7 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tradingagents.dataflows.rss_utils import fetch_dlnews_rss
+from tradingagents.dataflows.rss_utils import fetch_crypto_news_rss
 from tradingagents.agents.utils.agent_utils import Toolkit
 from tradingagents.default_config import DEFAULT_CONFIG
 
@@ -25,7 +25,7 @@ def quick_test():
     # Test 1: Fetch RSS feed
     print("\n1. Testing RSS feed fetch for BTC...")
     try:
-        articles = fetch_dlnews_rss(asset_symbol="BTC", days_back=7)
+        articles = fetch_crypto_news_rss(asset_symbol="BTC", days_back=7)
         print(f"   ✓ Success! Found {len(articles)} articles mentioning BTC")
         if articles:
             print(f"   - Latest article: {articles[0].get('title', 'N/A')[:60]}...")
@@ -38,7 +38,7 @@ def quick_test():
     print("\n2. Testing toolkit RSS feed tool...")
     try:
         toolkit = Toolkit(config=DEFAULT_CONFIG)
-        result = toolkit.get_dlnews_rss_feed.invoke({
+        result = toolkit.get_crypto_news_rss_feed.invoke({
             "token_symbol": "ETH",
             "days_back": 7
         })

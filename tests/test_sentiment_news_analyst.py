@@ -20,7 +20,7 @@ from tradingagents.dataflows.rss_utils import (
     fetch_rss_feed,
     parse_rss_entries,
     filter_articles_by_asset,
-    fetch_dlnews_rss,
+    fetch_crypto_news_rss,
     fetch_article_content
 )
 from tradingagents.agents.utils.agent_utils import Toolkit
@@ -39,7 +39,7 @@ def test_rss_feed_utilities():
     try:
         # Test fetching RSS feed
         print("\n1.1 Testing RSS feed fetch...")
-        feed = fetch_rss_feed("https://www.dlnews.com/rss/")
+        feed = fetch_rss_feed("https://cointelegraph.com/rss")
         print(f"   ✓ Successfully fetched RSS feed")
         print(f"   - Feed title: {feed.feed.get('title', 'N/A')}")
         print(f"   - Number of entries: {len(feed.entries)}")
@@ -60,9 +60,9 @@ def test_rss_feed_utilities():
         print(f"   - BTC articles: {len(btc_articles)}")
         print(f"   - ETH articles: {len(eth_articles)}")
         
-        # Test fetch_dlnews_rss convenience function
-        print("\n1.4 Testing fetch_dlnews_rss convenience function...")
-        btc_news = fetch_dlnews_rss(asset_symbol="BTC", days_back=7)
+        # Test fetch_crypto_news_rss convenience function
+        print("\n1.4 Testing fetch_crypto_news_rss convenience function...")
+        btc_news = fetch_crypto_news_rss(asset_symbol="BTC", days_back=7)
         print(f"   ✓ Fetched {len(btc_news)} BTC articles from last 7 days")
         
         return True
@@ -83,9 +83,9 @@ def test_rss_feed_tools():
     try:
         toolkit = Toolkit(config=DEFAULT_CONFIG)
         
-        # Test get_dlnews_rss_feed tool
-        print("\n2.1 Testing get_dlnews_rss_feed tool...")
-        result = toolkit.get_dlnews_rss_feed.invoke({
+        # Test get_crypto_news_rss_feed tool
+        print("\n2.1 Testing get_crypto_news_rss_feed tool...")
+        result = toolkit.get_crypto_news_rss_feed.invoke({
             "token_symbol": "BTC",
             "token_name": "Bitcoin",
             "days_back": 7
@@ -138,7 +138,7 @@ def test_sentiment_news_analyst_isolated():
             "trade_date": datetime.now().strftime("%Y-%m-%d"),
             "company_of_interest": "BTC",  # Bitcoin
             "messages": [
-                HumanMessage(content=f"Analyze sentiment for BTC from DL News RSS feed and provide a trading recommendation.")
+                HumanMessage(content=f"Analyze sentiment for BTC from crypto news RSS feeds and provide a trading recommendation.")
             ],
             "sentiment_news_report": ""
         }

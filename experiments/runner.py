@@ -18,7 +18,7 @@ from experiments.config import (
     EXPERIMENT_TOKENS, TIME_PERIODS, BASELINE_STRATEGIES,
     get_experiment_config, get_all_experiment_combinations
 )
-from experiments.baselines import get_baseline_strategy
+from experiments.baseline import get_baseline_strategy
 from experiments.metrics import PerformanceCalculator, CostAnalyzer, PredictionEvaluator
 
 

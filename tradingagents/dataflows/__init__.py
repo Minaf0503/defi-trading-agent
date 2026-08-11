@@ -6,7 +6,7 @@ from .rss_utils import (
     parse_rss_entries,
     filter_articles_by_asset,
     filter_articles_by_date,
-    fetch_dlnews_rss,
+    fetch_crypto_news_rss,
     fetch_article_content
 )
 
@@ -60,7 +60,7 @@ __all__ = [
     "parse_rss_entries",
     "filter_articles_by_asset",
     "filter_articles_by_date",
-    "fetch_dlnews_rss",
+    "fetch_crypto_news_rss",
     "fetch_article_content",
     "getNewsData",
     "fetch_top_from_category",

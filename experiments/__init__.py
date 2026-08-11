@@ -35,7 +35,7 @@ from .config import (
     get_all_experiment_combinations
 )
 
-from .baselines import (
+from .baseline import (
     BaselineStrategy,
     BuyAndHoldStrategy,
     MACDStrategy,
@@ -52,12 +52,23 @@ from .metrics import (
     PredictionEvaluator
 )
 
-from .runner import ExperimentRunner
+try:
+    from .runner import ExperimentRunner
+except ImportError as e:
+    import warnings
+    warnings.warn(f"ExperimentRunner unavailable (missing agent-graph dependency): {e}")
+    ExperimentRunner = None
 
-from .visualizer import (
-    ExperimentVisualizer,
-    ReportGenerator
-)
+try:
+    from .visualizer import (
+        ExperimentVisualizer,
+        ReportGenerator
+    )
+except ImportError as e:
+    import warnings
+    warnings.warn(f"Visualizer unavailable: {e}")
+    ExperimentVisualizer = None
+    ReportGenerator = None
 
 __all__ = [
     # Config

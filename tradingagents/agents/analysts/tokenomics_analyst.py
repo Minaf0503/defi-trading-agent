@@ -6,30 +6,33 @@ Analyzes tokenomics aspects: token supply, inflation/deflation, distribution, ut
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
-from tradingagents.dataflows.crypto_utils import CryptoDataProvider, OnchainAnalytics
 
 def create_tokenomics_analyst(llm, toolkit):
     """Create a tokenomics analyst that focuses on tokenomics analysis"""
-    
+
     def tokenomics_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]  # This will be the token symbol
-        token_address = state.get("token_address", None)  # Token contract address
-        
-        # Initialize data providers
-        crypto_provider = CryptoDataProvider()
-        onchain_analytics = OnchainAnalytics() if token_address else None
-        
+
         # Create tools for the analyst
         tools = [
             toolkit.get_onchain_supply_data,
             toolkit.get_onchain_holder_data,
             toolkit.get_crypto_market_metrics,
-            toolkit.get_tokenomics_data,  # We'll need to add this tool
+            toolkit.get_defillama_tvl,
         ]
         
         system_message = (
             """You are a tokenomics analyst specializing in cryptocurrency tokenomics analysis. Your role is to analyze tokenomics aspects and provide insights for token evaluation.
+
+DATA SOURCE NOTES (read before analyzing):
+- get_onchain_supply_data: real direct-RPC ERC20 data for BTC (WBTC), ETH, UNI, AAVE. SOL/ZEC/XMR unavailable.
+- get_onchain_holder_data: requires DUNE_API_KEY + DUNE_HOLDER_QUERY_ID in .env; say clearly if unconfigured.
+- get_defillama_tvl: fetches protocol TVL history from DefiLlama (no auth required). Pass protocol slug, not token symbol.
+  Common slugs: uniswap-v3, uniswap-v2, aave-v3, aave-v2, lido, makerdao, compound-v3.
+  TVL rising while price falls = accumulation signal; falling TVL + rising price = bearish divergence.
+  mcap/TVL ratio < 1 is traditionally considered undervalued vs. protocol usage.
+- No news tool in this analyst — Sentiment/News analyst owns that.
 
 Key areas to analyze (LIMIT YOUR ANALYSIS TO THESE TOKENOMICS ASPECTS ONLY):
 
@@ -71,16 +74,8 @@ Key areas to analyze (LIMIT YOUR ANALYSIS TO THESE TOKENOMICS ASPECTS ONLY):
    - Utility and demand strength
    - Long-term sustainability assessment
 
-6. **News Article Analysis (ONLY for token demand and utility):**
-   - Collect and analyze ONLY news articles relevant to token demand and utility
-   - Focus on announcements affecting token utility
-   - Changes in tokenomics mechanisms
-   - Protocol upgrades affecting token use
-   - DO NOT analyze general price movements or market sentiment
-
 IMPORTANT BOUNDARIES:
-- Limit your analysis ONLY to tokenomics aspects
-- When analyzing news, collect and analyze ONLY specific news articles relevant to token demand and utility
+- Limit your analysis ONLY to tokenomics aspects, using only the on-chain tools you have -- you have no news tool, so do not analyze news articles here (that's the Sentiment/News analyst's job)
 - Do not provide technical analysis, price predictions, or trading recommendations
 - Focus on the fundamental tokenomics structure and mechanisms
 

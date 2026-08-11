@@ -19,6 +19,8 @@ from .managers.risk_manager import create_risk_manager
 
 from .trader.trader import create_trader
 
+from .reflection.ace_agent import ReflectionACEAgent
+
 __all__ = [
     "FinancialSituationMemory",
     "Toolkit",
@@ -38,4 +40,5 @@ __all__ = [
     "create_risk_manager",
     "create_safe_debator",
     "create_trader",
+    "ReflectionACEAgent",
 ]

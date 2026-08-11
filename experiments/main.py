@@ -29,7 +29,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from experiments.runner import ExperimentRunner
 from experiments.visualizer import ExperimentVisualizer, ReportGenerator
-from experiments.config import EXPERIMENT_TOKENS, AGENT_ARCHITECTURES
+from experiments.config import EXPERIMENT_TOKENS, AGENT_ARCHITECTURES, PANEL_TOKENS, PANEL_DATES, get_panel_points
 
 
 def print_banner():
@@ -121,22 +121,40 @@ def run_full_experiments():
     print(f"📝 Report: {reporter.reports_dir}")
     
 
+def run_panel_experiment(
+    tokens: list | None = None,
+    dates: list | None = None,
+    architecture: str = "role_based",
+    quick: bool = False,
+):
+    """Run the FC27 point-in-time panel."""
+    from experiments.panel_runner import PanelRunner
+
+    if quick:
+        # Quick sanity check: two recent post-cutoff dates, two Tier 1 tokens
+        tokens = tokens or ["ETH", "AAVE"]
+        dates  = dates  or ["2025-03-15", "2024-11-10"]
+        print(f"\nRunning QUICK panel: {tokens} × {dates}")
+    else:
+        print(f"\nRunning FULL panel: {len(get_panel_points())} points")
+
+    runner = PanelRunner()
+    results = runner.run_panel(
+        tokens=tokens,
+        dates=dates,
+        architecture=architecture,
+        skip_existing=True,
+    )
+    runner.print_summary(results)
+    return results
+
+
 def run_quick_test():
     """Run quick test on single token."""
-    print("\n🏃 Running QUICK test on BTC (role-based)...")
-    print("⏱️  Estimated time: 5-10 minutes\n")
-    
-    runner = ExperimentRunner()
-    
-    # Run single experiment
-    result = runner.run_single_experiment(
-        token='BTC',
-        architecture='role_based',
-        period='backtesting'
-    )
-    
+    print("\n🏃 Running QUICK test on ETH (role-based) for recent panel dates...")
+    print("⏱️  Estimated time: 5-15 minutes\n")
+    run_panel_experiment(quick=True)
     print("\n✅ Quick test complete!")
-    print(f"📁 Results: {runner.results_dir}")
     
 
 def run_single_experiment(token: str, architecture: str):
@@ -221,11 +239,31 @@ Examples:
     
     parser.add_argument(
         '--mode',
-        choices=['full', 'quick', 'single'],
+        choices=['full', 'quick', 'single', 'panel', 'panel-full'],
         default='quick',
-        help='Experiment mode: full (all experiments), quick (test), single (one experiment)'
+        help=(
+            'Experiment mode: '
+            'quick (panel test, ETH+AAVE × 2 recent dates), '
+            'panel (FC27 panel, specify --tokens / --dates), '
+            'panel-full (all 63 panel points), '
+            'single (legacy single-token loop), '
+            'full (legacy full suite)'
+        )
     )
-    
+
+    parser.add_argument(
+        '--tokens',
+        nargs='+',
+        choices=list(PANEL_TOKENS.keys()),
+        help='Token symbols for panel mode (default: all panel tokens)'
+    )
+
+    parser.add_argument(
+        '--dates',
+        nargs='+',
+        help='Panel dates YYYY-MM-DD for panel mode (default: all panel dates)'
+    )
+
     parser.add_argument(
         '--token',
         choices=list(EXPERIMENT_TOKENS.keys()),
@@ -273,6 +311,18 @@ Examples:
             run_full_experiments()
         elif args.mode == 'quick':
             run_quick_test()
+        elif args.mode == 'panel':
+            run_panel_experiment(
+                tokens=args.tokens,
+                dates=args.dates,
+                architecture=args.architecture or "role_based",
+            )
+        elif args.mode == 'panel-full':
+            response = input(f"⚠️  This will run all {len(get_panel_points())} panel points. Continue? [y/N]: ")
+            if response.lower() != 'y':
+                print("Cancelled.")
+                sys.exit(0)
+            run_panel_experiment(architecture=args.architecture or "role_based")
         elif args.mode == 'single':
             if not args.token or not args.architecture:
                 print("❌ Error: --token and --architecture required for single mode")

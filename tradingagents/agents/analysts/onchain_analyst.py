@@ -6,50 +6,49 @@ Focuses on analyzing onchain data to discover potential sudden/trend shifts on t
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
-from tradingagents.dataflows.crypto_utils import OnchainAnalytics
 
 def create_onchain_analyst(llm, toolkit):
     """Create an onchain analyst that focuses on blockchain data"""
-    
+
     def onchain_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]  # This will be the token symbol
-        token_address = state.get("token_address", None)  # Token contract address
-        
-        # Initialize onchain analytics
-        onchain_analytics = OnchainAnalytics()
-        
-        # Get onchain data if address is available
-        onchain_data = {}
-        if token_address:
-            onchain_data = onchain_analytics.get_token_onchain_data(token_address)
-            liquidity_metrics = onchain_analytics.analyze_liquidity_metrics(token_address)
-            holder_metrics = onchain_analytics.analyze_holder_metrics(token_address)
-            transaction_metrics = onchain_analytics.analyze_transaction_metrics(token_address)
-        else:
-            # Fallback to basic analysis without onchain data
-            onchain_data = {"error": "No token address provided"}
-            liquidity_metrics = {"error": "No token address provided"}
-            holder_metrics = {"error": "No token address provided"}
-            transaction_metrics = {"error": "No token address provided"}
-        
+
         # Create tools for the analyst
         tools = [
             toolkit.get_onchain_liquidity_data,
             toolkit.get_onchain_holder_data,
             toolkit.get_onchain_transaction_data,
             toolkit.get_onchain_supply_data,
-            toolkit.get_mempool_data,  # We'll need to add this
+            toolkit.get_dex_volume_flow_quality,
+            toolkit.get_liquidity_depth_slippage,
+            toolkit.get_holder_concentration_whale_activity,
+            toolkit.get_mev_execution_risk,
+            toolkit.get_cross_protocol_leverage_pressure,
+            toolkit.get_contamination_instrument_data,
         ]
         
         system_message = (
             """You are an **Onchain Analyst** specializing in blockchain data analysis for cryptocurrency trading. Your role is to analyze onchain data to discover potential sudden/trend shifts on the underlying token blockchain. **LIMIT YOUR DATA ANALYSIS TO ONCHAIN DATA AND DEX ONLY.**
 
+DATA SOURCE NOTES (read before analyzing):
+- get_onchain_liquidity_data: real direct-RPC data for ETH, UNI, AAVE (Uniswap v3 pools). Reports plainly if no pool is configured.
+- get_onchain_holder_data / get_onchain_transaction_data: Dune queries configured via DUNE_HOLDER_QUERY_ID / DUNE_VOLUME_QUERY_ID in .env. Report clearly if unconfigured.
+- get_onchain_supply_data: real direct-RPC ERC20.totalSupply() for BTC (WBTC), ETH, UNI, AAVE. SOL/ZEC/XMR unavailable.
+- get_dex_volume_flow_quality: Dune query 7811692 -- DEX volume decomposition, buy/sell pressure, flow quality (organic vs. wash).
+- get_liquidity_depth_slippage: Dune query 7812804 -- on-chain liquidity depth and estimated slippage at various trade sizes.
+- get_holder_concentration_whale_activity: Dune query 7812812 -- holder distribution, top wallet rankings, whale accumulation/distribution.
+- get_mev_execution_risk: Dune query 7812866 -- MEV exposure, sandwich attack frequency, front-running risk score.
+- get_cross_protocol_leverage_pressure: Dune query 7812868 -- cross-protocol borrow rates, collateral ratios, liquidation risk, leverage pressure.
+- get_contamination_instrument_data: Dune query 7812879 -- correlated instruments (wrapped versions, related tokens) that may amplify or mask signals.
+- There is no mempool data source in this pipeline -- do not speculate about pending transactions or mempool congestion.
+
 WORKFLOW:
-1. **Gather Onchain Data**: Use available tools to collect liquidity, holder, transaction, and supply data
-2. **Analyze Key Metrics**: Examine network activity, holder behavior, liquidity dynamics, and mempool activity
-3. **Identify Signals**: Detect accumulation/distribution patterns, whale movements, liquidity shifts, and anomalies
-4. **Provide Recommendation**: Based on onchain analysis, provide clear trading recommendation with rationale
+1. **Gather Onchain Data**: Call ALL available tools in parallel where possible. Note plainly which returned real data vs. a "not configured/not available" message -- never fabricate numbers.
+2. **Analyze Key Metrics**: Examine network activity, holder behavior, liquidity dynamics, MEV risk, and leverage pressure from the real data returned.
+3. **Cross-Reference Modules**: Correlate signals across modules -- e.g., high MEV risk + thin liquidity depth = elevated execution risk; whale accumulation + strong flow quality = bullish onchain signal.
+4. **Identify Signals**: Detect accumulation/distribution patterns, whale movements, liquidity shifts, MEV anomalies, and leverage-driven risks.
+5. **Provide Recommendation**: Based on the full onchain picture, provide a clear trading recommendation with rationale grounded in specific module outputs.
 
 Key areas to analyze (LIMIT DATA TO ONCHAIN DATA AND DEX ONLY):
 
@@ -89,15 +88,7 @@ Key areas to analyze (LIMIT DATA TO ONCHAIN DATA AND DEX ONLY):
    - Address activity levels
    - Active vs dormant wallets
 
-5. **Mempool Analysis:**
-   - Pending transactions in mempool
-   - Transaction fee trends
-   - Large pending transactions
-   - Mempool congestion indicators
-   - Potential market-moving transactions
-   - Fee spike detection
-
-6. **Blockchain State Changes:**
+5. **Blockchain State Changes:**
    - Smart contract state changes
    - Contract call patterns
    - Event emission patterns
@@ -120,42 +111,51 @@ OUTPUT FORMAT:
 Provide a comprehensive onchain analysis including:
 
 1. **Onchain Data Summary:**
-   - Liquidity metrics analyzed
-   - Holder data examined
-   - Transaction patterns reviewed
-   - Supply metrics assessed
+   - Which modules returned real data vs. unavailable
+   - Supply, liquidity, holder, and volume metrics
+   - Contamination instrument context
 
-2. **Key Onchain Signals:**
-   - Accumulation/distribution patterns detected
-   - Whale movements identified
-   - Liquidity shifts observed
-   - Network activity anomalies
-   - Mempool signals
+2. **Flow Quality & Volume Analysis (Module 1):**
+   - Buy/sell pressure balance
+   - Organic vs. wash-trade volume composition
+   - Flow quality signals
 
-3. **Holder Behavior Analysis:**
-   - Holder distribution changes
-   - Top holder activity
-   - New holder trends
-   - Accumulation patterns
+3. **Liquidity Depth & Slippage (Module 2):**
+   - Pool depth at various trade sizes
+   - Estimated slippage for relevant trade sizes
+   - Liquidity concentration risks
 
-4. **Liquidity Analysis:**
-   - Pool depth and concentration
-   - Liquidity changes
-   - DEX liquidity metrics
-   - Liquidity risks
+4. **Holder Concentration & Whale Activity (Module 3):**
+   - Top holder distribution and concentration
+   - Recent whale accumulation or distribution
+   - Holder trend signals
 
-5. **Trading Recommendation:**
+5. **MEV & Execution Risk (Module 4):**
+   - MEV exposure and sandwich attack frequency
+   - Front-running risk indicators
+   - Execution risk score
+
+6. **Cross-Protocol Leverage Pressure (Module 5):**
+   - Borrow rates and collateral ratios
+   - Liquidation risk thresholds
+   - Aggregate leverage pressure signal
+
+7. **Contamination Instrument Context (Module 6):**
+   - Correlated instruments identified
+   - Signal contamination or amplification risks
+
+8. **Trading Recommendation:**
    - **BUY/HOLD/SELL** with clear rationale
    - Confidence level (high/medium/low)
-   - Key onchain factors driving the recommendation
-   - Risk factors based on onchain data
+   - Key onchain factors from specific modules
+   - Risk factors (MEV, liquidity, leverage, whale activity)
 
-6. **Summary Table:**
-   - Key onchain metrics
+9. **Summary Table:**
+   - Key onchain metrics from each module
    - Signals detected
    - Trading recommendation summary
 
-Make sure to append a Markdown table at the end organizing key onchain metrics and insights."""
+Make sure to append a Markdown table at the end organizing key onchain metrics and insights from all modules."""
         )
         
         prompt = ChatPromptTemplate.from_messages(

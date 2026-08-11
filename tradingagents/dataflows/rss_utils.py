@@ -197,42 +197,54 @@ def filter_articles_by_date(
     return filtered
 
 
-def fetch_dlnews_rss(
+# DL News (the original source here) shut down in May 2026 ("DL News is
+# closing", published 2026-05-07) -- its feed is frozen and was replaced with
+# these three, all confirmed live and fresh as of 2026-06-21 (see
+# writing/papers/PROGRESS_LOG.md).
+CRYPTO_NEWS_FEEDS = {
+    "cointelegraph": "https://cointelegraph.com/rss",
+    "decrypt": "https://decrypt.co/feed",
+    "theblock": "https://www.theblock.co/rss.xml",
+}
+
+
+def fetch_crypto_news_rss(
     asset_symbol: Optional[str] = None,
     asset_name: Optional[str] = None,
     days_back: Optional[int] = 7
 ) -> List[Dict]:
     """
-    Fetch and filter articles from DL News RSS feed.
-    
+    Fetch and filter articles from active crypto news RSS feeds
+    (Cointelegraph, Decrypt, The Block).
+
     Args:
         asset_symbol: Asset symbol to filter for (e.g., "BTC", "ETH")
         asset_name: Asset name to filter for (e.g., "Bitcoin", "Ethereum")
         days_back: Number of days to look back
-    
+
     Returns:
-        List of filtered articles
+        List of filtered articles, newest first, tagged with their source
     """
-    feed_url = "https://www.dlnews.com/rss/"
-    
-    try:
-        feed = fetch_rss_feed(feed_url)
-        articles = parse_rss_entries(feed)
-        
-        # Filter by date if specified
-        if days_back:
-            end_date = datetime.now()
-            articles = filter_articles_by_date(articles, days_back=days_back, end_date=end_date)
-        
-        # Filter by asset if specified
-        if asset_symbol or asset_name:
-            articles = filter_articles_by_asset(articles, asset_symbol or "", asset_name)
-        
-        return articles
-    
-    except Exception as e:
-        print(f"Error fetching DL News RSS feed: {e}")
-        return []
+    all_articles = []
+    for source, feed_url in CRYPTO_NEWS_FEEDS.items():
+        try:
+            feed = fetch_rss_feed(feed_url)
+            articles = parse_rss_entries(feed)
+            for article in articles:
+                article["source"] = source
+            all_articles.extend(articles)
+        except Exception as e:
+            print(f"Error fetching {source} RSS feed: {e}")
+
+    if days_back:
+        end_date = datetime.now()
+        all_articles = filter_articles_by_date(all_articles, days_back=days_back, end_date=end_date)
+
+    if asset_symbol or asset_name:
+        all_articles = filter_articles_by_asset(all_articles, asset_symbol or "", asset_name)
+
+    all_articles.sort(key=lambda a: a.get("published_timestamp") or 0, reverse=True)
+    return all_articles
 
 
 def fetch_article_content(article_url: str, timeout: int = 30) -> Optional[str]:

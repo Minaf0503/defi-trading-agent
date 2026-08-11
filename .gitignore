@@ -1,0 +1,22 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+.env
+*.egg-info/
+
+# In-progress report/paper and raw experiment output -- not part of the
+# committed code structure. See README.md for what is tracked instead.
+/BUILD_PLAN.md
+/writing/
+/eval_results/
+/experiments/panel_results/
+/experiments/results/
+/tradingagents/dataflows/data_cache/
+/literature/*.pdf
+/1786052534609.pdf
+/Concept+Note+Guidance.pdf
+/Concept+Note+Template.docx
+/Problem+Statements+PS+1+20260708.pdf
+/Problem+Statements+PS+4+20260708.pdf
+/Realistic_Multi_Agent_LLM_Trading_for_DeFi__From_Backtest_Illusion_to_On_Chain_Execution__6_.pdf

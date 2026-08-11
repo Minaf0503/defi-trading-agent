@@ -16,7 +16,7 @@ The test script includes four test suites:
 
 ### 1. RSS Feed Utilities Test
 Tests the core RSS feed functionality:
-- Fetching RSS feeds from DL News
+- Fetching RSS feeds from Cointelegraph/Decrypt/The Block
 - Parsing RSS entries
 - Filtering articles by asset
 - Date filtering
@@ -25,11 +25,11 @@ Tests the core RSS feed functionality:
 - `fetch_rss_feed()` - RSS feed fetching
 - `parse_rss_entries()` - Entry parsing
 - `filter_articles_by_asset()` - Asset filtering
-- `fetch_dlnews_rss()` - Convenience function
+- `fetch_crypto_news_rss()` - Convenience function
 
 ### 2. RSS Feed Tools Test
 Tests the LangChain tools:
-- `get_dlnews_rss_feed` tool
+- `get_crypto_news_rss_feed` tool
 - `get_crypto_news_sentiment` tool
 
 **What it tests:**
@@ -96,7 +96,7 @@ Test 1: RSS Feed Utilities
 
 1.1 Testing RSS feed fetch...
    ✓ Successfully fetched RSS feed
-   - Feed title: DL News
+   - Feed title: Cointelegraph/Decrypt/The Block
    - Number of entries: 20
 
 1.2 Testing RSS entry parsing...
@@ -134,7 +134,7 @@ DEFAULT_CONFIG = {
 
 ### RSS Feed Fetching Fails
 - Check internet connection
-- Verify DL News RSS feed is accessible: https://www.dlnews.com/rss/
+- Verify Cointelegraph/Decrypt/The Block RSS feed is accessible: https://cointelegraph.com/rss (or decrypt.co/feed, theblock.co/rss.xml)
 - Check if feedparser is installed: `pip install feedparser`
 
 ### Tool Execution Fails
@@ -154,7 +154,7 @@ DEFAULT_CONFIG = {
 
 ## Dependencies
 
-Required packages (should be in requirements.txt):
+Required packages (declared in pyproject.toml):
 - `feedparser` - RSS feed parsing
 - `beautifulsoup4` - HTML parsing
 - `requests` - HTTP requests
@@ -163,7 +163,7 @@ Required packages (should be in requirements.txt):
 
 Install dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Notes

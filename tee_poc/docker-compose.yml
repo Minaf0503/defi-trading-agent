@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    image: defi-trading-agent-tee-poc:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/dstack.sock:/var/run/dstack.sock
+    restart: unless-stopped

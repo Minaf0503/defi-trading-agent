@@ -2,6 +2,8 @@ import functools
 import time
 import json
 
+from tradingagents.agents.utils.parsing import extract_confidence
+
 
 def create_trader(llm, memory):
     def trader_node(state, name):
@@ -30,16 +32,18 @@ def create_trader(llm, memory):
         messages = [
             {
                 "role": "system",
-                "content": f"""You are a trading agent analyzing market data to make investment decisions. Based on your analysis, provide a specific recommendation to buy, sell, or hold. End with a firm decision and always conclude your response with 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL**' to confirm your recommendation. Do not forget to utilize lessons from past decisions to learn from your mistakes. Here is some reflections from similar situatiosn you traded in and the lessons learned: {past_memory_str}""",
+                "content": f"""You are a trading agent analyzing market data to make investment decisions. Based on your analysis, provide a specific recommendation to buy, sell, or hold. End with a firm decision and always conclude your response with 'FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** (Confidence: NN%)' -- the confidence is YOUR OWN self-assessed probability (0-100) that this decision will be profitable, not a measure of how strongly you phrased the recommendation. Be honest about uncertainty; a well-calibrated 55% means you genuinely think it's close to a coin flip, not a hedge to avoid commitment. This number feeds a downstream statistical calibration step, so it needs to be your real estimate, not decoration. Do not forget to utilize lessons from past decisions to learn from your mistakes. Here is some reflections from similar situatiosn you traded in and the lessons learned: {past_memory_str}""",
             },
             context,
         ]
 
         result = llm.invoke(messages)
+        raw_confidence = extract_confidence(result.content)
 
         return {
             "messages": [result],
             "trader_investment_plan": result.content,
+            "raw_confidence": raw_confidence,
             "sender": name,
         }
 

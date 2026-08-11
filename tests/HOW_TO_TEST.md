@@ -9,7 +9,7 @@ python tests/quick_test_sentiment.py
 ```
 
 This will:
-- Fetch RSS feed from DL News for BTC
+- Fetch RSS feed from Cointelegraph/Decrypt/The Block for BTC
 - Test the toolkit RSS feed tool for ETH
 - Verify basic functionality works
 
@@ -36,10 +36,10 @@ This will run:
 ### Test RSS Feed Utilities Only
 
 ```python
-from tradingagents.dataflows.rss_utils import fetch_dlnews_rss
+from tradingagents.dataflows.rss_utils import fetch_crypto_news_rss
 
 # Fetch articles for BTC
-articles = fetch_dlnews_rss(asset_symbol="BTC", days_back=7)
+articles = fetch_crypto_news_rss(asset_symbol="BTC", days_back=7)
 print(f"Found {len(articles)} articles")
 ```
 
@@ -52,7 +52,7 @@ from tradingagents.default_config import DEFAULT_CONFIG
 toolkit = Toolkit(config=DEFAULT_CONFIG)
 
 # Test RSS feed tool
-result = toolkit.get_dlnews_rss_feed.invoke({
+result = toolkit.get_crypto_news_rss_feed.invoke({
     "token_symbol": "ETH",
     "days_back": 7
 })
@@ -123,12 +123,12 @@ print(f"Report: {final_state.get('sentiment_news_report', '')[:500]}")
 cd /path/to/defi-trading-agent
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### RSS feed fetch fails
 - Check internet connection
-- Verify DL News is accessible: https://www.dlnews.com/rss/
+- Verify Cointelegraph/Decrypt/The Block is accessible: https://cointelegraph.com/rss (or decrypt.co/feed, theblock.co/rss.xml)
 - Check if feedparser is installed: `pip install feedparser`
 
 ### LLM API errors
@@ -156,7 +156,7 @@ Quick Test: Sentiment News Analyst RSS Feed
 
 2. Testing toolkit RSS feed tool...
    ✓ Success! Tool executed
-   - Result preview: Found 3 articles for ETH from DL News:...
+   - Result preview: Found 3 articles for ETH from Cointelegraph/Decrypt/The Block:...
 
 ============================================================
 Quick test completed successfully! ✓

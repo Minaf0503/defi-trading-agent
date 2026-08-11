@@ -12,31 +12,56 @@ Complete experimental setup for comparing role-based and function-based multi-ag
 - [Understanding Results](#understanding-results)
 - [Troubleshooting](#troubleshooting)
 
-## 🎯 Overview
+## Overview
 
-This experimental framework implements comprehensive backtesting to compare:
+This experimental framework implements the FC27 DeFi Workshop evaluation panel. It compares:
 
-1. **Role-Based Multi-Agent Architecture** (TradingAgents framework)
-2. **Function-Based Orchestrator Architecture** (Centralized approach)
-3. **5 Baseline Rule-Based Strategies** (MACD, KDJ+RSI, ZMR, SMA, Buy & Hold)
+1. **Role-Based Multi-Agent Architecture** — four analysts (on-chain, technical, tokenomics, sentiment) feeding a bull/bear debate → research manager → trader pipeline
+2. **Single-Agent Ablation (P6 baseline)** — identical analyst reports, single synthesis step, no debate
+3. **5 Baseline Rule-Based Strategies** — MACD, KDJ+RSI, ZMR, SMA Crossover, Buy & Hold
 
-Across **7 major tokens**: BTC, ETH, SOL, UNI, AAVE, ZEC, XMR
+The primary instrument is `experiments/panel_runner.py` (`PanelRunner`), not `experiments/main.py`. See `experiments/config.py` for the full panel definition.
 
-## 🔬 Experiment Design
+## Panel Design
 
-### Time Periods
+### Token Panel (10 EVM-native tokens, 2 tiers)
 
-- **All Period**: Jan 2022 - Jun 2025
-- **Training Data**: Jul 2023 - Dec 2024
-- **Backtesting Period**: Jan 2022 - Jun 2023
+**Tier-1 (7 tokens — used in RQ1, RQ2, RQ3):** ETH, WBTC, LINK, AAVE, UNI, MKR, CRV
+
+All have verified Uniswap v3 pools and complete history from 2022-06-15. Appear at all 8 panel dates.
+
+**Tier-2 (3 tokens — used in RQ2 execution cost analysis only):** PEPE (from 2023-09-15), ONDO (from 2024-06-15), ENA (from 2024-06-15)
+
+Post-launch tokens with shallow-to-mid liquidity; provide the extreme contrast points for the execution cost scaling curve at $500k notional. Excluded from RQ1 (McNemar's test) and RQ3 (contamination stratification) — their post-launch restriction prevents pre-cutoff bucket coverage.
+
+### Panel Dates (8 dates, contamination-stratified)
+
+| Bucket | Dates | Tier-1 points |
+|--------|-------|--------------|
+| pre\_cutoff | 2022-06-15, 2022-11-10, 2023-03-15, 2023-09-15 | 28 |
+| partial | 2024-01-15, 2024-06-15 | 14 |
+| post\_cutoff | 2024-11-10, 2025-03-15 | 14 |
+
+Total: 56 Tier-1 + 11 Tier-2 = **67 decision points**. Dates pre-committed before any panel execution.
+
+### Research Questions
+
+- **RQ1 (Architecture):** McNemar's test — does multi-agent debate change decisions, and is any change an improvement? Runs on 56 Tier-1 points (paired role-based vs. single-agent decisions).
+- **RQ2 (Execution):** Anvil fork-simulated costs at $10k / $50k / $100k / $500k notional across all 10 tokens. See `scripts/run_fork_sim_mode2.py`.
+- **RQ3 (Contamination):** Two-sample proportion test on Tier-1 pre-cutoff vs. post-cutoff directional hit rates. Model cutoffs: gpt-4o-mini Oct 2023, o4-mini Sep 2024.
+
+### Ground Truth
+
+7-day forward return from Yahoo Finance. BUY correct if > +2%, SELL correct if < -2%, HOLD excluded from directional hit rate.
 
 ### Prediction Task
 
-- **Objective**: Predict upward/downward trend in next 24 hours
-- **Metrics**: 
-  - Direction accuracy
-  - Min/Max price gap assessment
-  - Volatility prediction error
+- **Objective**: Point-in-time BUY/HOLD/SELL decision at each (token, date) panel point
+- **Metrics**:
+  - Directional hit rate (BUY/SELL only), stratified by contamination bucket
+  - McNemar's test statistic (RQ1)
+  - Two-sample proportion z-test (RQ3)
+  - Execution cost by notional size (RQ2)
 
 ### Performance Evaluation
 
@@ -70,7 +95,7 @@ Across **7 major tokens**: BTC, ETH, SOL, UNI, AAVE, ZEC, XMR
 python --version
 
 # Required packages
-pip install -r requirements.txt
+pip install -e .
 
 # Additional experiment dependencies
 pip install matplotlib seaborn tabulate
@@ -99,31 +124,76 @@ python experiments/main.py --mode quick
 
 This runs BTC with role-based architecture as a test.
 
-### 2. Run Single Experiment
+### 2. Run the FC27 Panel (primary path)
 
-Run a specific token/architecture combination:
-
-```bash
-python experiments/main.py --mode single --token BTC --architecture role_based
-```
-
-Available options:
-- **Tokens**: BTC, ETH, SOL, UNI, AAVE, ZEC, XMR
-- **Architectures**: role_based, function_based
-
-### 3. Run Full Experimental Suite (2-4 hours)
-
-Run all experiments:
+Run a single panel point:
 
 ```bash
-python experiments/main.py --mode full
+.venv/bin/python3 -c "
+from experiments.panel_runner import PanelRunner
+runner = PanelRunner()
+result = runner.run_panel_point('ETH', '2024-06-15')
+print(result['decision'], result['fwd_return_7d'])
+"
 ```
 
-This will:
-- Run 14 agent experiments (7 tokens × 2 architectures)
-- Run 35 baseline experiments (7 tokens × 5 baselines)
-- Generate comprehensive visualizations
-- Create research report
+Run the full panel (skip already-completed points):
+
+```bash
+.venv/bin/python3 -c "
+from experiments.panel_runner import PanelRunner
+runner = PanelRunner()
+results = runner.run_panel(skip_existing=True)
+runner.print_summary(results)
+stats = runner.run_statistical_analysis(results)
+"
+```
+
+Available tokens (Tier-1): ETH, WBTC, LINK, AAVE, UNI, MKR, CRV
+
+Available tokens (Tier-2, post-launch dates only): PEPE, ONDO, ENA
+
+### 3. Run the P6 Single-Agent Ablation (RQ1)
+
+Run the same panel points with the single-agent baseline:
+
+```bash
+.venv/bin/python3 scripts/run_p6_ablation.py
+```
+
+Then run the McNemar's test:
+
+```bash
+.venv/bin/python3 -c "
+from experiments.panel_runner import PanelRunner
+runner = PanelRunner()
+multi = runner.load_all_results('role_based')
+single = runner.load_all_results('single_agent')
+paired = [(m,s) for m in multi for s in single if m['token']==s['token'] and m['date']==s['date']]
+result = runner.mcnemar_test([p[0]['decision'] for p in paired], [p[1]['decision'] for p in paired])
+print(result)
+"
+```
+
+### 4. Run Fork Simulation (RQ2)
+
+After the panel produces directional decisions, run Mode 2:
+
+```bash
+.venv/bin/python3 scripts/run_fork_sim_mode2.py --results-dir experiments/panel_results
+```
+
+This replays every BUY/SELL across 4 notional sizes ($10k/$50k/$100k/$500k) using Anvil (Foundry) against real historical Uniswap v3 state. Requires `ONCHAIN_RPC_URL` (archive-capable) in `.env` and `anvil` installed via Foundry.
+
+### 5. Validate Pool Addresses
+
+Before the first panel run, confirm all 10 Uniswap v3 pool addresses are live:
+
+```bash
+.venv/bin/python3 scripts/validate_pool_addresses.py
+```
+
+Expected output: `ALL PASS` for all 10 pools.
 
 ## 📊 Understanding Results
 
@@ -368,7 +438,7 @@ time.sleep(2)  # 2 second delay between API calls
 cd /path/to/defi-trading-agent
 
 # Install all dependencies
-pip install -r requirements.txt
+pip install -e .
 pip install matplotlib seaborn tabulate
 
 # Run from project root

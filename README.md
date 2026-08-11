@@ -46,20 +46,26 @@ git clone <repository-url>
 cd defi-trading-agent
 
 # Create a virtual environment
-conda create -n defi-trading python=3.10
-conda activate defi-trading
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install the package (editable -- pyproject.toml is the single source of
+# dependency truth; there is no requirements.txt)
+pip install -e .
+
+# Foundry's anvil is needed for fork-simulated execution (Mode 2)
+curl -L https://foundry.paradigm.xyz | bash && foundryup
 ```
 
 ### Required API Keys
 
-Set your OpenAI API key (or other LLM provider):
+Copy `.env.example` to `.env` and fill in keys for the services you want to use:
 
 ```bash
-export OPENAI_API_KEY=$YOUR_OPENAI_API_KEY
+cp .env.example .env
 ```
+
+At minimum, an LLM key is required to run the agent graph (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`). `COINGECKO_API_KEY`, `ONCHAIN_RPC_URL` (an archive-capable RPC endpoint, e.g. Alchemy's free tier), `DUNE_API_KEY`, and `REDDIT_*` unlock additional real data sources; see the comments in `.env.example` and the "Data Sources" section below for what each one enables.
 
 ## Usage
 
@@ -98,45 +104,30 @@ ta = TradingAgentsGraph(
 )
 
 # Analyze a crypto token
-_, decision = ta.propagate("BTC", "2024-05-10")
+_, decision = ta.propagate("ETH", "2026-06-22")
 print(decision)
 ```
 
+For the full pipeline (live debate -> Stage 4-5 calibration/sizing -> Stage 6 real fork-sim execution), see `scripts/run_e2e_pipeline.py` rather than the bare snippet above.
+
 ## Supported Tokens & Networks
 
-### Major Cryptocurrencies
-- **BTC** - Bitcoin
-- **ETH** - Ethereum
-- **USDC** - USD Coin
-- **USDT** - Tether
-- **DAI** - Dai
-
-### DeFi Tokens
-- **UNI** - Uniswap
-- **LINK** - Chainlink
-- **AAVE** - Aave
-- **COMP** - Compound
-- **CRV** - Curve DAO
-- **SUSHI** - SushiSwap
-- **YFI** - Yearn Finance
-- **BAL** - Balancer
-- **SNX** - Synthetix
-- **MKR** - Maker
-
-### Networks Supported
-- **Ethereum** - Mainnet and testnets
-- **Polygon** - Layer 2 scaling
-- **Base** - Coinbase's L2
-- **Solana** - High-performance blockchain
+The current experiment panel (`experiments/config.py`) is BTC, ETH, SOL, UNI, AAVE, ZEC, XMR. Real on-chain (direct RPC) data only covers tokens with an actual Ethereum mainnet ERC20 address -- BTC (via WBTC), ETH, UNI, AAVE. SOL is a different chain entirely; ZEC and XMR have no EVM presence. Live venues: Uniswap v3 (spot, Ethereum), GMX v2 (perps, Arbitrum), Morpho Vaults (Ethereum). Polygon/Base/Solana are not integrated despite occasionally being mentioned aspirationally in older docs -- if you see a claim like that elsewhere in this repo outside `archive/`, it's stale; this section is the current state.
 
 ## Data Sources
 
-The framework integrates with multiple crypto data providers:
+All of the following are real, live integrations (not aspirational):
 
-- **CoinGecko API**: Real-time crypto prices, market data, and historical data
+- **Yahoo Finance** (`yfinance`): primary historical OHLCV source (free, no key, full history)
+- **CoinGecko API**: current price/market data, and historical data within its free tier's 365-day window
 - **DefiLlama API**: DeFi protocol TVL and metrics
-- **Binance API**: Additional price data source
-- **Coinbase AgentKit**: Blockchain data integration for onchain analysis
+- **Direct Ethereum/Arbitrum RPC** (`tradingagents/dataflows/onchain/`): live venue state -- Chainlink price feeds, Uniswap v3 pools, GMX v2 (via its public REST API), Morpho Vaults (ERC4626), plus ERC20 supply reads. Needs an archive-capable RPC URL (e.g. Alchemy's free tier) for historical-block queries.
+- **Foundry/Anvil fork-simulated execution** (`tradingagents/dataflows/onchain/fork_sim.py`): real transactions (gas, slippage) against a forked copy of real historical or current chain state
+- **Dune Analytics**: holder concentration and DEX volume (needs a one-time query setup -- see `DUNE_HOLDER_QUERY_ID`/`DUNE_VOLUME_QUERY_ID` in `.env.example`)
+- **Crypto news RSS** (Cointelegraph, Decrypt, The Block) and the **Crypto Fear & Greed Index** (alternative.me, free, no key): sentiment/news pipeline
+- **Reddit** (PRAW): real but typically unconfigured, since Reddit gates API access behind an approval process now
+
+Coinbase AgentKit was investigated for on-chain data and for accelerating the Morpho Vault integration, but is **not used** -- the direct-RPC `tradingagents/dataflows/onchain/` module replaces it.
 
 ## Features
 
@@ -164,9 +155,20 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 Apache-2.0 License
 
+## Documentation
+
+This repo has several scoped READMEs rather than one giant file -- start here, then go deeper as needed:
+
+| Doc | Covers |
+|---|---|
+| `tests/README.md` | Sentiment/news analyst test suite |
+| `experiments/README.md` | Backtest/experiment framework (baselines, metrics, token/period config) |
+| `evaluation/README.md` | LLM-judge and human-review evaluation framework |
+| `agent-context/README.md` | The agent context/tool-registry runtime system |
+| `.claude/skills/README.md` | Claude Code skills used in this project |
+
 ## Acknowledgments
 
 - Based on [TradingAgents](https://github.com/TauricResearch/TradingAgents) framework
-- Uses [Coinbase AgentKit](https://github.com/coinbase/agentkit) for blockchain data integration
-- Integrates with CoinGecko, DefiLlama, and other crypto data providers
+- Integrates with CoinGecko, DefiLlama, Dune Analytics, and other crypto data providers
 
